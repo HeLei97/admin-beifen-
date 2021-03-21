@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>扫描二维码</title> <!-- jquery -->
+</head>
+<body><h1>二维码</h1>
+<div>
+    <table>
+        <tr>
+            <td><img id="qrCode" width="200" height="200"/></td>
+            <td><h5></h5></td>
+        </tr>
+    </table>
+</div>
+</body>
+<script type="text/javascript" src="../res/login/js/jquery.min.js"></script>
+<script>
+    var img = "";
+    $.ajax({
+        url: "/wx/gettest",
+        type: "GET",
+        success: function (data) {
+            $("#qrCode").attr("src", data.qrCode);
+            var uuid = data.uuid;
+            callbackScan(uuid)
+        }
+    });
+
+    //使用setTimeOut来循环请求判断是否被扫描，被扫描以后调用下面一个函数循环判断是否被确认
+    function callbackScan(uuid) {
+        var tID = setTimeout(function () {
+            $.ajax({
+                url: '/wx/query',
+                dataType: "json",
+                type: 'GET',
+                data: {"uuid": uuid},
+                success: function (res) {
+                    //process data here
+                    console.log("uuid:" + res.uuid);
+                    console.log(res.QrCodeStatus);
+                    if (res.QrCodeStatus == "SCANNED") {
+                        clearTimeout(tID);
+                        console.log("请求确认")
+                        $("img").hide();
+                        $("h5").text("请求确认");
+                        callbackVerify(uuid)
+                    } else {
+                        callbackScan(uuid)
+                    }
+                }
+            })
+        }, 1500);
+    }
+
+    //循环判断是否被确认
+
+    function callbackVerify(uuid) {
+        var tID = setTimeout(function () {
+            $.ajax({
+                url: '/wx/query',
+                dataType: "json",
+                type: 'GET',
+                data: {"uuid": uuid},
+                success: function (res) {
+                    //process data here
+                    console.log(res);
+                    if (res.QrCodeStatus == "VERIFIED") {
+                        clearTimeout(tID);
+                        console.log("确认成功")
+                        $("h5").text("确认成功");
+                        window.location.href = "success";
+                    } else if (res.QrCodeStatus == "EXIT") {
+                        clearTimeout(tID);
+                        $("h5").text("用户取消授权");
+                    } else {
+                        callbackVerify(uuid)
+                    }
+                }
+            })
+        }, 1500);
+    } </script>
+</html>

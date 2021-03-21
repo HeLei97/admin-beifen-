@@ -1,0 +1,27 @@
+package com.config;
+
+import com.helei.api.common.ImplBase;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.apache.cxf.bus.spring.SpringBus;
+import org.apache.cxf.jaxws.EndpointImpl;
+import javax.xml.ws.Endpoint;
+
+@Configuration
+public class Config extends ImplBase {
+
+    @Autowired
+    SpringBus bus;
+
+    @Autowired
+    com.module.system.login.service.DbService DbService;
+
+    @Bean
+    public Endpoint endpointJcyyService() {
+        EndpointImpl endpoint = new EndpointImpl(bus, DbService);
+        endpoint.publish("/backstageService");
+        getLogger().info("后台管理系统发表成功!");
+        return endpoint;
+    }
+}

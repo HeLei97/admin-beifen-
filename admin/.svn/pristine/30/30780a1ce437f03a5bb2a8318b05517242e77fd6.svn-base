@@ -1,0 +1,249 @@
+package com.module.weixin.service;
+
+
+import com.helei.api.common.ImplBase;
+
+import com.helei.api.util.ImageUtil;
+import com.util.QRcodeUtils;
+import com.util.RedisUtil;
+import com.util.WeixinUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
+import javax.xml.transform.Result;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@SuppressWarnings({"serial", "unchecked", "rawtypes"})
+@Service("wxApiService")
+public class ApiService extends ImplBase {
+
+    @Autowired
+    private DbService dbService;
+
+    @Resource
+    private WeixinUtil weixinUtil;
+
+    @Resource
+    private RedisUtil redisUtil;
+
+    @Value("${imges.wx.url}")
+    private String imageurl;
+    /**
+     * 获取基础支持的 Access_token
+     *
+     * @return Access_token
+     */
+    public Map getAccess_token() {
+        try {
+            Map return_map = new HashMap();
+            Object redis_access_token = redisUtil.get("access_token");
+            Object redis_expires_in = redisUtil.get("expires_in");
+            Object redis_access_token_time = redisUtil.get("access_token_time");
+            //如果 redis 内有数据首先判断redis是否有效
+            if (isnull(redis_access_token)) {
+                String[] keys = new String[]{"appID", "appsecret", "access_token", "expires_in", "access_token_time"};
+                List res = dbService.getConfig(keys);
+                Map<String, Object> map = weixinUtil.ConfigRowtocolumn(res);
+                for (String key : keys) {
+                    if (!map.containsKey(key)) {
+                        throw new Exception(key + " 配置项未查询到,请确定config表内是否有该配置项");
+                    }
+                }
+                Object access_token_time = map.get("access_token_time");
+                Object expires_in = map.get("expires_in");
+                Object access_token = map.get("access_token");
+                Object appID = map.get("appID");
+                Object appsecret = map.get("appsecret");
+                Boolean is_Effective = weixinUtil.access_token_Is_it_effective(access_token_time, expires_in);
+                if (isnull(appID) || isnull(appsecret)) {
+                    throw new Exception("appID或appsecret配置项为空,请确定config表内是否有该配置项");
+                }
+                if (isnull(access_token_time) || isnull(expires_in) || isnull(access_token)) {//如值为空从新获取写入数据库
+                    //模拟数据
+                    Map res_map = weixinUtil.access_token(appID.toString(), appsecret.toString());
+                    Map sqlres = dbService.updateAccess_token(res_map);
+                    redisUtil.set("access_token", sqlres.get("access_token"));
+                    redisUtil.set("expires_in", sqlres.get("expires_in"));
+                    redisUtil.set("access_token_time", sqlres.get("access_token_time"));
+                    return_map.put("access_token", sqlres.get("access_token"));
+                    return return_map;
+                    //走刷新access_token逻辑
+                } else if (is_Effective) {
+                    //如果有效 写入redis 并返回
+                    redisUtil.set("access_token", access_token);
+                    redisUtil.set("expires_in", expires_in);
+                    redisUtil.set("access_token_time", access_token_time);
+                    return_map.put("access_token", access_token);
+                } else {
+                    //如果无效 重新获取 并写入redis 并返回
+                    Map res_map = weixinUtil.access_token(appID.toString(), appsecret.toString());
+                    Map sqlres = dbService.updateAccess_token(res_map);
+                    redisUtil.set("access_token", sqlres.get("access_token"));
+                    redisUtil.set("expires_in", sqlres.get("expires_in"));
+                    redisUtil.set("access_token_time", sqlres.get("access_token_time"));
+                    return_map.put("access_token", sqlres.get("access_token"));
+                    return return_map;
+                    //走刷新access_token逻辑
+                }
+                return return_map;
+            } else {
+                return_map.put("access_token", redis_access_token);
+                Boolean is_Effective = weixinUtil.access_token_Is_it_effective(redis_access_token_time, redis_expires_in);
+                if (is_Effective) {
+                    //有效直接返回
+                    return return_map;
+                } else {
+                    //无效删除redis数据 并执行递归操作
+                    redisUtil.del("access_token");//删除 redis 保存的数据
+                    return getAccess_token();//从新进入获取的方法
+                }
+            }
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e, null, null);
+            return dbService.getReturn_status("20000");
+        }
+    }
+    @Transactional
+    public Map getUserInfo(Map map, HttpServletResponse response) {
+        try {
+            String code = map.get("code").toString();
+            String state = map.get("state").toString();
+            Object appID=redisUtil.get("appid");
+            Object appsecret=redisUtil.get("appsecret");
+            //如果redis中没有保存就重新保存
+            if (isnull(appID)|| isnull(appsecret)){
+                getWxtoconfigure();
+                appID=redisUtil.get("appid");
+                appsecret=redisUtil.get("appsecret");
+            }
+            //获取用户信息的Access_token
+            Map url_map = weixinUtil.CodeExchangeForAccess_token(appID, appsecret, code);
+            //判断是否成功请求
+            if (isnull(url_map.get("errcode"))) {
+                String access_token = url_map.get("access_token").toString();
+                String openid = url_map.get("openid").toString();
+                //获取微信登录信息
+                Map info_map = weixinUtil.GetUserinformation(access_token, openid);
+                if (!isnull(info_map.get("errcode"))) {
+                    //如果返回48001 错误 就重新获取授权
+                    if (info_map.get("errcode").equals("48001")) {
+                        weixinUtil.Reauthorization(appID, "snsapi_userinfo",state);
+                    } else {
+                        getLogger().error("获取用户信息失败:" + info_map.get("errcode"));
+                    }
+                    return dbService.getReturn_status("20000");
+                } else {
+                    //查询是否有保存微信用户信息
+                    List<Map> list=dbService.getWXUser(new HashMap(){
+                        {
+                            put("openid",info_map.get("openid"));
+                        }
+                    });
+                    if (list.size()==0){
+                        //数据库中无数据 插入数据并保存图片
+                        String imgurl=ImageUtil.downloadjpg(info_map.get("headimgurl").toString(),info_map.get("openid").toString(),imageurl);
+                        int row=dbService.addWXUser(new HashMap(){
+                            {
+                                put("openid",info_map.get("openid"));
+                                put("country",info_map.get("country"));
+                                put("province",info_map.get("province"));
+                                put("city",info_map.get("city"));
+                                put("sex",info_map.get("sex"));
+                                put("nickname",info_map.get("nickname"));
+                                put("headimgurl",info_map.get("headimgurl"));
+                                put("imgurl",imgurl);
+                            }
+                        });
+                        //判断是否成功插入数据
+                        if (row>1){
+                            return dbService.getReturn_status("10000",new HashMap(){{
+                                put("code","FAIL");
+                                put("msg","未绑定用户");
+                            }});
+                        }else {
+                            Object realmname=redisUtil.get("realmname");
+                            String url="realmname"+"/wx/confirmlogin?uuid="+map.get("uuid");
+                            response.sendRedirect(url);
+                            return dbService.getReturn_status("20000");
+                        }
+                    }else {
+                        //判断是否绑定会员
+                        if (isnull(list.get(0).get("user_id"))){
+                            return dbService.getReturn_status("10000",new HashMap(){{
+                                put("code","FAIL");
+                                put("msg","未绑定用户");
+                            }});
+                        }else {
+                            return dbService.getReturn_status("10000",new HashMap(){{
+                                put("code","SUCCESS");
+                                put("msg","已获取用户");
+                            }});
+                        }
+                    }
+                }
+            } else {
+                String errcode = url_map.get("errcode").toString();
+                if (errcode.equals("40029") || errcode.equals("40163")) {
+                    weixinUtil.Reauthorization(appID, "snsapi_userinfo",state);
+                }
+                return url_map;
+            }
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e, null, null);
+            return dbService.getReturn_status("20000");
+        }
+    }
+    public void getCode(Map map) {
+        try {
+            Object appid=redisUtil.get("appid");
+            if (isnull(appid)){
+                getWxtoconfigure();
+                getCode(map);
+            }
+            weixinUtil.Reauthorization(appid, "snsapi_userinfo",map.get("uuid"));
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e, null, null);
+        }
+    }
+    public void getWxtoconfigure(){
+        String[] keys = new String[]{"appID", "appsecret",};
+        List res = dbService.getConfig(keys);
+        Map<String, Object> resmap = weixinUtil.ConfigRowtocolumn(res);
+        Object appid = resmap.get("appID");
+        Object appsecret = resmap.get("appsecret");
+        redisUtil.set("appid",appid);
+        redisUtil.set("appsecret",appsecret);
+    }
+    public Map getconfig(String [] keys){
+        List res = dbService.getConfig(keys);
+        Map<String, Object> resmap = weixinUtil.ConfigRowtocolumn(res);
+        return resmap;
+    }
+    public  Map createQr(){
+        String uuid=UUID.randomUUID().toString().replace("-", "").toLowerCase();
+        try {
+            Map map=getconfig(new String[]{"realmname","QRcodetime"});
+            redisUtil.set("realmname",map.get("realmname"));
+            String url=map.get("realmname").toString()+"/wx/getCode?uuid="+uuid;
+            String qrCode = QRcodeUtils.createQrCode(url,200,200);
+            redisUtil.set(uuid,"NOT_SCAN",Long.valueOf(String.valueOf(map.get("QRcodetime"))));
+            return new HashMap(){{
+                put("qrCode",qrCode);
+                put("uuid",uuid);
+            }};
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}

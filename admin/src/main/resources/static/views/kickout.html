@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>被踢出</title>
+</head>
+<body>
+</body>
+<!-- Jquery Js -->
+<script type="text/javascript" src="../res/login/js/jquery.min.js"></script>
+<!-- Layui Js -->
+<script src="../res/layui/layui/layui.js"></script>
+<script type="text/javascript">
+layui.use(["element","layer"],function () {
+    parent.layer.open({
+        title: '登录异常'
+        ,content: '被踢出或则在另一地方登录',
+        yes: function(index, layero){
+            window.open("/login");
+            //事件
+            layer.close(indxex);
+        }
+    });
+});
+</script>
+</html>

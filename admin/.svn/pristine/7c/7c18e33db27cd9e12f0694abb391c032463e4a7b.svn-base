@@ -1,0 +1,66 @@
+package com.module.weixin.controller;
+
+
+
+import com.entity.UserEntity;
+import com.helei.api.util.ReqToMapUtil;
+import com.module.weixin.service.ApiService;
+import com.util.ControllerBase;
+import com.util.RedisUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.Date;
+import java.util.Map;
+
+@SuppressWarnings({"unchecked", "rawtypes", "serial"})
+@RequestMapping(value = "/wx")
+@RestController
+public class WXRestController extends ControllerBase {
+    @Autowired
+    private ApiService apiService;
+
+    private static int ExpireTime = 60;   // redis中存储的过期时间60s
+
+    @Resource
+    private RedisUtil redisUtil;
+
+    @RequestMapping("set")
+    public boolean redisset(String key, String value){
+        UserEntity userEntity =new UserEntity();
+        userEntity.setId(Long.valueOf(1));
+        userEntity.setGuid(String.valueOf(1));
+        userEntity.setName("zhangsan");
+        userEntity.setAge(String.valueOf(20));
+        userEntity.setCreateTime(new Date());
+        return redisUtil.set(key,value);
+    }
+
+    @RequestMapping("get")
+    public Object redisget(String key){
+        return redisUtil.get(key);
+    }
+
+    @RequestMapping("expire")
+    public boolean expire(String key){
+        return redisUtil.expire(key,ExpireTime);
+    }
+
+    @RequestMapping("getAccess_token")
+    public void getAccess_token(){
+        Object Access_token=redisUtil.get("Access_token");
+        if (Access_token==null){
+            System.out.println(apiService.getAccess_token());
+        }
+    }
+    @RequestMapping("getUserInfo")
+    public Map getUserInfo(HttpServletRequest req, HttpServletResponse response, Model model){
+        Map map= ReqToMapUtil.getParameterMap(req);
+        return apiService.getUserInfo(map,response);
+    }
+}

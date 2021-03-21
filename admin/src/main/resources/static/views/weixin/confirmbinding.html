@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=0,viewport-fit=cover">
+    <title>绑定确认</title>
+    <link rel="stylesheet" href="../res/weui/style/weui.css"/>
+    <link rel="stylesheet" href="../res/weui/example/example.css"/>
+<!--    <script type="text/javascript" src="../res/login/js/jquery.min.js"></script>-->
+    <script src="../res/weui/example/zepto.min.js"></script>
+    <script src="../res/weui/example/example.js"></script>
+    <script src="../../res/weui/jweixin-1.0.0.js"></script>
+    <script src="../../res/weui/weui.min.js"></script>
+</head>
+<body ontouchstart>
+<div class="container" id="container"></div>
+<script type="text/html" id="tpl_home">
+    <div class="page">
+        <div class="weui-form">
+            <div class="weui-form__text-area">
+                <h2 class="weui-form__title">绑定用户</h2>
+            </div>
+            <div class="page__hd">
+                <p class="page__desc">您即将与[<span th:text="${username}"> </span>]进行账户绑定,绑定成功后与其他账户的绑定立即解除</p>
+            </div>
+            <div class="weui-form__opr-area">
+                <a class="weui-btn weui-btn_primary" href="javascript:" id="showTooltips">绑定</a>
+                <a href="javascript:" class="weui-btn weui-btn_default" id="showWarnToast">取消</a>
+            </div>
+            <div class="weui-form__tips-area">
+                <p class="weui-form__tips">
+                    点击登录即表示<a href="javascript:">同意用户协议</a>
+                </p>
+            </div>
+        </div>
+        <div id="js_toast" style="display: none;">
+            <div class="weui-mask_transparent"></div>
+            <div class="weui-toast">
+                <i class="weui-icon-success-no-circle weui-icon_toast"></i>
+                <p class="weui-toast__content">已完成</p>
+            </div>
+        </div>
+    </div>
+    <div id="toast" style="display: none;">
+        <div class="weui_mask_transparent"></div>
+        <div class="weui_toast">
+            <i class="weui_icon_toast"></i>
+            <p class="weui_toast_content">已完成</p>
+        </div>
+    </div>
+    <div id="warnToast" style="display: none;">
+        <div class="weui-mask_transparent"></div>
+        <div class="weui-toast">
+            <i class="weui-icon-warn weui-icon_toast"></i>
+            <p class="weui-toast__content">取消登录</p>
+        </div>
+    </div>
+</script>
+<script type="text/javascript">
+    $(function(){
+        var $tooltips = $('.js_tooltips');
+        var $toast = $('#js_toast');
+
+        $('#showTooltips').on('click', function(){
+            Scancode(0);
+            // // toptips的fixed, 如果有`animation`, `position: fixed`不生效
+            // $('.page.cell').removeClass('slideIn');
+            // $toast.fadeIn(100);
+            // setTimeout(function () {
+            //     $toast.fadeOut(100);
+            // }, 2000);
+        });
+        var $warnToast = $('#warnToast');
+        $('#showWarnToast').on('click', function(){
+            Scancode(1);
+        });
+        function Scancode(state) {
+            var uuid=getUrlParam("uuid");
+            var key=getUrlParam("key");
+            var openid=getUrlParam("openid");
+            $.ajax({
+                url: '/wx/Scancode',
+                dataType: "json",
+                type: 'POST',
+                data: {"t":1,"uuid": uuid,"state":state,"key":key,"openid":openid},
+                success: function (res) {
+                    if (res.code=="Error"){
+                        $('#warnToast div p').html(res.msg);
+                        if ($warnToast.css('display') != 'none') return;
+                        $warnToast.fadeIn(100);
+                        setTimeout(function () {
+                            $warnToast.fadeOut(100);
+                        }, 2000);
+                    }else if (res.code=="Success"){
+                        $('#warnToast div p').html(res.msg);
+                        // toptips的fixed, 如果有`animation`, `position: fixed`不生效
+                        $('.page.cell').removeClass('slideIn');
+                        $toast.fadeIn(100);
+                        setTimeout(function () {
+                            $toast.fadeOut(100);
+                        }, 2000);
+                    }
+                    setTimeout(function () {
+                        WeixinJSBridge.invoke('closeWindow', {}, function (res) { });
+                    }, 2000);
+                }
+            })
+        }
+        function getUrlParam(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+    });
+
+</script>
+<script type="text/template" id="footerTmpl">
+    <div class="page__ft">
+    <a href="javascript:home()"><img src="../res/weui/example/images/icon_footer_link.png" /></a>
+    </div>
+</script>
+</body>
+</html>

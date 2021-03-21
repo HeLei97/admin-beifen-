@@ -1,0 +1,153 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>消息中心</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <link rel="stylesheet" href="../res/layui/layui/css/layui.css" media="all">
+  <link rel="stylesheet" href="../res/layui/css/admin.css" media="all">
+</head>
+<body>
+
+<div class="layui-fluid" id="LAY-app-message">
+  <div class="layui-card">
+    <div class="layui-tab layui-tab-brief" lay-filter="message">
+      <ul class="layui-tab-title">
+        <li class="layui-this">全部消息<span class="layui-badge" th:if="${allNum >0}"><p th:text=${allNum}></p></span></li>
+        <li>通知<span class="layui-badge" th:if="${noticeNum >0}"><p th:text=${noticeNum}></p></span></li>
+        <li>私信<span class="layui-badge" th:if="${newsNum >0}"><p th:text=${newsNum}></p></span></li>
+      </ul>
+      <div class="layui-tab-content">
+
+        <div class="layui-tab-item layui-show">
+          <div class="LAY-app-message-btns" style="margin-bottom: 10px;">
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="all" data-events="del">删除</button>
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="all" data-events="ready">标记已读</button>
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="all" data-events="readyAll">全部已读</button>
+          </div>
+
+          <table id="message-all" lay-filter="message-all"></table>
+        </div>
+        <div class="layui-tab-item">
+
+          <div class="LAY-app-message-btns" style="margin-bottom: 10px;">
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="notice" data-events="del">删除</button>
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="notice" data-events="ready">标记已读</button>
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="notice" data-events="readyAll">全部已读</button>
+          </div>
+
+          <table id="message-notice" lay-filter="message-notice"></table>
+        </div>
+        <div class="layui-tab-item">
+
+          <div class="LAY-app-message-btns" style="margin-bottom: 10px;">
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="direct" data-events="del">删除</button>
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="direct" data-events="ready">标记已读</button>
+            <button class="layui-btn layui-btn-primary layui-btn-sm" data-type="direct" data-events="readyAll">全部已读</button>
+          </div>
+
+          <table id="message-direct" lay-filter="message-direct"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script src="../res/layui/layui/layui.js"></script>
+  <script>
+    layui.use(['table','element'], function(){
+      var table = layui.table;
+      var $ = layui.$;
+      var element = layui.element;
+      element.on('tab(message)', function (data) {
+        console.log(data);
+        if (data.index==0){
+          all();
+        }
+        if (data.index==1){
+          notice();
+        }
+        if (data.index==2){
+          direct();
+        }
+      });
+      all();
+      function all(){
+      table.render({
+        elem: '#message-all'
+        ,url:'/user/getmsgList'
+        ,cellMinWidth: 80 //全局定义常规单元格的最小宽度，layui 2.2.1 新增
+        ,cols: [
+                [
+                  {field:'title', title: '标题内容', sort: true,templet:function (data) {
+                    if (data.state=="1"){
+                      return "<span style='font-size:16px;'><a href='/Message/detail?id="+data.ID+"'>"+data.title+"</a></span>";
+                    }else {
+                      return "<span style='font-size:16px;color:#666;font-weight:bold;'><a href='/Message/detail?id="+data.ID+"'>"+data.title+"</a></span>";
+                    }
+                    }},
+                  {field:'MC', width:100, title: '发件人', sort: true},
+                  {field:'datetime', width:180, title: '时间', sort: true}
+        ]
+        ]
+      });
+      }
+      function notice(){
+      table.render({
+        elem: '#message-notice'
+        ,url:'/user/getmsgList'
+        ,where :{type:0}
+        ,cellMinWidth: 80 //全局定义常规单元格的最小宽度，layui 2.2.1 新增
+        ,cols: [
+          [
+            {field:'title', title: '标题内容', sort: true,templet:function (data) {
+                if (data.state=="1"){
+                  return "<span style='font-size:16px;'><a href='/Message/detail?id="+data.ID+"'>"+data.title+"</a></span>";
+                }else {
+                  return "<span style='font-size:16px;color:#666;font-weight:bold;'><a href='/Message/detail?id="+data.ID+"'>"+data.title+"</a></span>";
+                }
+              }},
+            {field:'MC', width:100, title: '发件人', sort: true},
+            {field:'datetime', width:180, title: '时间', sort: true}
+          ]
+        ]
+      });
+      }
+      function direct(){
+      table.render({
+        elem: '#message-direct'
+        ,url:'/user/getmsgList'
+        ,where :{type:1}
+        ,cellMinWidth: 80 //全局定义常规单元格的最小宽度，layui 2.2.1 新增
+        ,cols: [
+          [
+            {field:'title', title: '标题内容', sort: true,templet:function (data) {
+                if (data.state=="1"){
+                  return "<span style='font-size:16px;'><a href='/Message/detail?id="+data.ID+"'>"+data.title+"</a></span>";
+                }else {
+                  return "<span style='font-size:16px;color:#666;font-weight:bold;'><a href='/Message/detail?id="+data.ID+"'>"+data.title+"</a></span>";
+                }
+              }},
+            {field:'MC', width:100, title: '发件人', sort: true},
+            {field:'datetime', width:180, title: '时间', sort: true}
+          ]
+        ]
+      });
+      }
+      winReload("a", "a_frame");
+      function winReload(winName, frameName) {
+        var jsFun = 'location.reload();';
+        api.execScript({
+          name: winName,
+          frameName: frameName,
+          script: jsFun
+        });
+      }
+    });
+  </script>
+</body>
+</html>

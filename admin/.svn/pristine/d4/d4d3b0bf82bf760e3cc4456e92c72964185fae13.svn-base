@@ -1,0 +1,164 @@
+package com.module.system.login.service;
+
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.helei.api.common.ImplBase;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+
+@SuppressWarnings({"serial", "unchecked", "rawtypes"})
+@Service("sysApiService")
+public class ApiService extends ImplBase {
+
+    @Autowired
+    private DbService dbService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    //private Map<String,Object> userinfo=(Map<String, Object>) request.getSession().getAttribute("user");
+
+    private Map<String,Object> userinfo=null;
+    //----new--
+    public Map getuserinfoMap(){
+        if (userinfo==null){
+            userinfo=(Map<String, Object>) request.getSession().getAttribute("user");
+        }
+        return userinfo;
+    }
+
+    /**
+     * 判断用户是否注册,写入用户表
+     *
+     * @param key
+     * @return
+     */
+    public Map queryOperator(String key) {
+        return dbService.queryOperator(key);
+    }
+
+    /**
+     * 注册账号
+     *
+     * @param map
+     * @return
+     */
+    @Transactional
+    public Map register(Map map) {
+        try {
+            map.put("BM", dbService.GetUserBm());
+            List Userlist = dbService.getUserInfo(map);
+            if (Userlist.size() > 0) {
+                return dbService.getReturn_status("20001");
+            } else {
+                return dbService.SetUser(map);
+            }
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            getLogger().warn(e);
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.getReturn_status("20000");
+        }
+    }
+
+    public Map queryMenuTree(Map map) {
+        try {
+            String grouping = map.get("grouping_id").toString();
+            List<Map> AuthList = dbService.getAuthority(grouping);
+            String menu_list;
+            Map res=new HashMap();
+            if (AuthList.size() == 0) {
+                menu_list="";
+            } else {
+                menu_list = AuthList.get(0).get("menu_id").toString();
+            }
+            if (!menu_list.equals("")){
+                res=dbService.getReturn_status("10000");
+                List<Map> list=dbService.queryPermissionByUser(menu_list);
+                for (Map Menumap:list){
+                    List<Map> list1=dbService.getSubmenu(menu_list,Menumap.get("ID").toString());
+                    Menumap.put("Submenu",list1);
+                }
+                res.put("data",list);
+            }else{
+                throw  new Exception("获取菜单失败");
+            }
+            return res;
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.getReturn_status("20000");
+        }
+    }
+
+    public List queryUser() {
+        try {
+            return dbService.queryUser();
+        } catch (Exception e) {
+            getLogger().warn(e);
+            return null;
+        }
+    }
+    public List queryMenu() {
+        try {
+            return dbService.queryMenu();
+        } catch (Exception e) {
+            getLogger().warn(e);
+            return null;
+        }
+    }
+    public List queryUserRole(int userId) {
+        try {
+            return dbService.queryUserRole(userId);
+        } catch (Exception e) {
+            getLogger().warn(e);
+            return null;
+        }
+    }
+    public List queryPermissionByUser(String groupingID) {
+        try {
+            List<Map> AuthList=dbService.getAuthority(groupingID);
+            String Mebuids=AuthList.get(0).get("menu_id").toString();
+            return dbService.queryPermissionByUser(Mebuids);
+        } catch (Exception e) {
+            getLogger().warn(e);
+            return null;
+        }
+    }
+    public String getIpAddr(HttpServletRequest request){
+        String ipAddress = request.getHeader("x-forwarded-for");
+        if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("Proxy-Client-IP");
+        }
+        if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getRemoteAddr();
+            if(ipAddress.equals("127.0.0.1") || ipAddress.equals("0:0:0:0:0:0:0:1")){
+                //根据网卡取本机配置的IP
+                InetAddress inet=null;
+                try {
+                    inet = InetAddress.getLocalHost();
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                }
+                ipAddress= inet.getHostAddress();
+            }
+        }
+        //对于通过多个代理的情况，第一个IP为客户端真实IP,多个IP按照','分割
+        if(ipAddress!=null && ipAddress.length()>15){ //"***.***.***.***".length() = 15
+            if(ipAddress.indexOf(",")>0){
+                ipAddress = ipAddress.substring(0,ipAddress.indexOf(","));
+            }
+        }
+        return ipAddress;
+    }
+}

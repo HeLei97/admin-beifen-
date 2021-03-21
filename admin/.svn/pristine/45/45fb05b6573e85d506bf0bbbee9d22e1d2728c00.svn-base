@@ -1,0 +1,33 @@
+package com.util;
+
+import com.helei.api.common.ImplBase;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
+
+@SuppressWarnings("rawtypes")
+public class ControllerBase extends ImplBase {	
+	
+	@ModelAttribute	
+	protected void setBaseModel(Model model, HttpServletRequest request){
+		Map operator = (Map)request.getSession().getAttribute("user");
+		if(operator != null)
+			model.addAttribute("user", operator);
+		Map dept = (Map)request.getSession().getAttribute("dept");
+		if(dept != null)
+			model.addAttribute("dept", dept);
+	}
+
+	@ModelAttribute
+	protected Map test(Model model, HttpServletRequest request){
+		return new HashMap(){
+			{
+				put("333",333);
+			}
+		};
+	}
+
+}

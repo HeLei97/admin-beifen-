@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Layui</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../res/layui/layui/css/layui.css" media="all">
+    <!-- 注意：如果你直接复制所有代码到本地，上述css路径需要改成你本地的 -->
+    <style>
+        #card {
+            width: 60%;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-card" id="card">
+    <div class="layui-card-body">
+        <form class="layui-form layui-form-pane" action="">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">名称</label>
+                    <div class="layui-input-inline">
+                        <input name="grouping_name" lay-verify="required" placeholder="请输入用户组" class="layui-input"
+                               type="text" autocomplete="off">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">描述</label>
+                    <div class="layui-input-inline">
+                        <input name="remarks" class="layui-input" placeholder="请输入描述" type="text" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">是否锁定</label>
+                    <div class="layui-input-block">
+                        <input type="radio" name="state" value="0" title="否" checked>
+                        <input type="radio" name="state" value="1" title="是">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button class="layui-btn" lay-submit lay-filter="form">立即提交</button>
+                    <button type="button" class="layui-btn layui-btn-primary" id="exit">取消</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="../res/layui/layui/layui.js"></script>
+<!-- 注意：如果你直接复制所有代码到本地，上述js路径需要改成你本地的 -->
+
+<script type="text/javascript" th:inline="javascript">
+    layui.use(['form'], function () {
+        var form = layui.form
+            , layer = layui.layer;
+        var $ = layui.$;
+        var ID = null;
+        var index;
+        var Groupinfo;
+        //监听提交
+        form.on('submit(form)', function (data) {
+            if (ID != null) {
+                data.field['ID']=ID;
+                if (Groupinfo.grouping_name=data.field.grouping_name && Groupinfo.remarks==data.field.remarks && Groupinfo.state==data.field.state){
+                    layer.msg('操作失败:未修改数据', {icon: 2});
+                }else {
+                $.ajax({
+                    url: "/authority/updateGroup",
+                    type: "post",
+                    data: data.field,
+                    dataType: "json",
+                    beforeSend: function () {
+                        index = layer.load(0, {shade: false});
+                    }, complete: function () {
+                        layer.close(index);
+                    }, success: function (data) {
+                        if (data.code_type == 0) {
+                            layer.msg('操作成功:' + data.msg, {icon: 1});
+                            var index = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index);//关闭当前页
+                            parent.layui.table.reload("Authority"); //父表格重载
+                        } else {
+                            layer.msg('操作失败:' + data.msg, {icon: 2});
+                        }
+                    },
+                    error: function (data) {
+
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+                }
+            } else {
+                $.ajax({
+                    url: "/authority/addGroup",
+                    type: "post",
+                    data: data.field,
+                    dataType: "json",
+                    beforeSend: function () {
+                        var index = layer.load(0, {shade: false});
+                    }, complete: function () {
+
+                    }, success: function (data) {
+                        layer.closeAll();
+                        if (data.code_type == 0) {
+                            layer.msg('操作成功:' + data.msg, {icon: 1});
+                            var index = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index);//关闭当前页
+                            parent.layui.table.reload("Authority"); //父表格重载
+                        } else {
+                            layer.msg('操作失败:' + data.msg, {icon: 2});
+                        }
+                    },
+                    error: function (data) {
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+            }
+            return false;
+        });
+        layer.ready(function () {
+            ID = getQueryString("ID");
+            if (ID != null) {
+                $.ajax({
+                    url: "/authority/getGroup",
+                    type: "post",
+                    data: {"ID": ID},
+                    dataType: "json",
+                    beforeSend: function () {
+                        index = layer.load(0, {shade: false});
+                    }, complete: function () {
+                        layer.close(index);
+                    }, success: function (data) {
+                        if (data.code_type == 0) {
+                            $("input[name=grouping_name]").val(data.data.grouping_name);
+                            $("input[name=remarks]").val(data.data.remarks);
+                            if (data.data.state=="0"){
+                                $("input[name=state][value=0]").attr("checked","true");
+                                $("input[name=state][value=1]").removeAttr("checked");
+                            }else {
+                                $("input[name=state][value=0]").removeAttr("checked");
+                                $("input[name=state][value=1]").attr("checked","true");
+                            }
+                            Groupinfo=data.data;
+                            form.render();
+                        } else {
+                            layer.msg('操作失败:' + data.msg, {icon: 2});
+                        }
+                    },
+                    error: function (data) {
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+            }
+        });
+
+        $("#exit").on('click', function (data) {
+            var index = parent.layer.getFrameIndex(window.name);
+            parent.layer.close(index);//关闭当前页
+            //parent.layui.table.reload("User"); 父表格重载
+        });
+        layer.ready(function () {
+        });
+    });
+
+    function getQueryString(name) {
+        var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i');
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) {
+            return unescape(r[2]);
+        }
+        return null;
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,12 @@
+package com.webservice.backstage;
+
+import javax.jws.WebMethod;
+import javax.jws.WebParam;
+import javax.jws.WebService;
+
+@WebService(name = "backstageApiService", targetNamespace = "http://webservice.api.web.com/")
+public interface Service {
+	@WebMethod
+	String gettest(@WebParam(name = "data") String data);
+
+}

@@ -1,0 +1,428 @@
+package com.module.system.authority.service;
+
+
+import com.helei.api.common.ImplBase;
+import com.helei.api.util.ArrayUtils;
+import com.helei.api.util.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.servlet.http.HttpServletRequest;
+import java.math.BigInteger;
+import java.util.*;
+
+@SuppressWarnings({"serial", "unchecked", "rawtypes"})
+@Service("AuthApiService")
+public class ApiService extends ImplBase {
+
+    @Autowired
+    private DbService dbService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    //private Map<String,Object> userinfo=(Map<String, Object>) request.getSession().getAttribute("user");
+
+    private Map<String, Object> userinfo = null;
+
+    //----new--
+    public Map getuserinfoMap() {
+        if (userinfo == null) {
+            userinfo = (Map<String, Object>) request.getSession().getAttribute("user");
+        }
+        return userinfo;
+    }
+
+    public Map getUserGroup(Map map) {
+        try {
+            List list = dbService.getGrouping(map);
+            if (list.size() > 0) {
+                return dbService.res_success(list, list.size());
+            } else {
+                return dbService.getReturn_status("20000");
+            }
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.getReturn_status("20000");
+        }
+    }
+
+    public Map getMenu(Map map) {
+        try {
+            List<Map> menu=new ArrayList<>();
+            List<Map> Menulist = dbService.getMenu(new HashMap() {{
+                put("parent_id", 0);
+            }});
+            List<Map> list = dbService.getAuthority(new HashMap(){{put("grouping_id",map.get("grouping"));}});
+                for (Map m : Menulist) {
+                    Map Parentmenu=new HashMap();
+                    Parentmenu.put("title",m.get("name"));
+                    Parentmenu.put("id",m.get("ID"));
+                    Parentmenu.put("field",m.get("ID"));
+                    List<Map> Submenu = dbService.getMenu(new HashMap() {{
+                        put("parent_id", m.get("ID"));
+                    }});
+                    //判断是否展开树
+                    if (list.size() > 0) {
+                        String menu_id = list.get(0).get("menu_id").toString();
+                        String[] menulist = menu_id.split(",");
+                        //判断已有权限是否选勾
+                        if (StringUtils.existStr(menulist, m.get("ID").toString())) {
+                            Parentmenu.put("spread",true);
+                            Parentmenu.put("checked", true);
+                        } else {
+                            Parentmenu.put("spread",false);
+                            Parentmenu.put("checked", false);
+                        }
+                    } else {
+                        Parentmenu.put("spread", false);
+                    }
+
+                    for (Map Mmap:Submenu) {
+                        Map Submenumap=new HashMap();
+                        Submenumap.put("title",Mmap.get("name"));
+                        Submenumap.put("id",Mmap.get("ID"));
+                        Submenumap.put("field",Mmap.get("ID"));
+                        Submenumap.put("spread","false");
+                        //判断是否存菜单权限分配
+                        if (list.size() > 0) {
+                            String menu_id = list.get(0).get("menu_id").toString();
+                            String[] menulist = menu_id.split(",");
+                            //判断已有权限是否选勾
+                            if (StringUtils.existStr(menulist, Mmap.get("ID").toString())) {
+                                Submenumap.put("checked", true);
+                            } else {
+                                Submenumap.put("checked", false);
+                            }
+                        } else {
+                            Submenumap.put("checked", false);
+                        }
+                        Collections.replaceAll(Submenu,Mmap,Submenumap);
+                        Mmap.putAll(Parentmenu);
+                    }
+                    Parentmenu.put("children",Submenu);
+                    menu.add(Parentmenu);
+                }
+                return dbService.getReturn_status("10000",menu);
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.getReturn_status("20000");
+        }
+    }
+    @Transactional
+    public Map UpdateAuthority(Map map){
+        try {
+            Map grouping_id=new HashMap();
+            grouping_id.put("grouping_id",map.get("grouping_id"));
+            map.remove("grouping_id");
+            if (dbService.UpdateAuthority(grouping_id,map)>0){
+                return dbService.getReturn_status("10003");
+            }else {
+                int number=dbService.AddAuthority(new HashMap(){{
+                    putAll(grouping_id);
+                    putAll(map);
+                }});
+                if (number>0){
+                    return dbService.getReturn_status("10003");
+                }else {
+                    return dbService.getReturn_status("20003");
+                }
+            }
+        } catch (Exception e) {
+            getLogger().warn(e);
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.getReturn_status("20000");
+        }
+    }
+    public List getMenulist(){
+        return  dbService.getMenulist();
+    }
+    public Map setMenuLock(Map map) {
+        try {
+            String lock;
+            if ("true".equals(map.get("lock"))) {
+                lock = "1";
+            } else {
+                lock = "0";
+            };
+            int number = dbService.setMenuLock(map.get("id").toString(), lock);
+            if (number > 0) {
+                return dbService.getReturn_status("10003");
+            } else {
+                return dbService.getReturn_status("20003");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map delMenu(Map map){
+        try {
+            //查询是否存在绑定关系
+            List list=dbService.getMenubinding(map);
+            //查询是否有子级菜单
+            List lists=dbService.getMenu(new HashMap(){{
+                put("parent_id",map.get("id"));
+            }});
+            if (list.size()>0 || lists.size()>0){
+                return dbService.getReturn_status("20007");
+            }else {
+                dbService.delMenu(map);
+                return  dbService.getReturn_status("10004");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map DeleteGroup(Map map){
+        try {
+            //查询是否存在绑定关系
+            List list=dbService.getUser(map);
+            if (list.size()>0){
+                return dbService.getReturn_status("20007");
+            }else {
+                dbService.delGroup(map);
+                dbService.delAuthority(new HashMap(){{
+                    put("grouping_id",map.get("ID"));
+                }});
+                return  dbService.getReturn_status("10004");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    @Transactional
+    public Map addGroup(Map map){
+        try {
+            //查询是否存在绑定关系
+            List list=dbService.getGrouping(new HashMap(){{
+                put("grouping_name",map.get("grouping_name"));
+            }});
+            if (list.size()>0){
+                return dbService.getReturn_status("20008");
+            }else {
+                int number=dbService.addGroup(map);
+                BigInteger bi= (BigInteger) map.get("ID");//获取插入数据的ID
+                int ID=bi.intValue();
+                number=dbService.addAuthority(new HashMap(){{
+                    put("grouping_id",ID);
+                    put("menu_id","");
+                }});
+                if (number>0){
+                    return  dbService.getReturn_status("10001");
+                }else {
+                    return dbService.getReturn_status("20010");
+                }
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map getGroup(Map map){
+        try {
+            //查询是否存在绑定关系
+            List list=dbService.getGrouping(map);
+            if (list.size()>0){
+                return dbService.getReturn_status("10000",list.get(0));
+            }else {
+                return dbService.getReturn_status("20009");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map updateGroup(Map map){
+        try {
+            Map key=new HashMap();
+            key.put("ID",map.get("ID"));
+            map.remove("ID");
+            //查询是否存在绑定关系
+            int number=dbService.updateGroup(key,map);
+            if (number>0){
+                return dbService.getReturn_status("10003");
+            }else {
+                return dbService.getReturn_status("20003");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map setGroupLock(Map map) {
+        try {
+            String lock;
+            if ("true".equals(map.get("lock"))) {
+                lock = "1";
+            } else {
+                lock = "0";
+            };
+            int number = dbService.setGroupLock(new HashMap(){
+                {
+                    put("ID",map.get("ID"));
+                }
+            }, new HashMap(){
+                {
+                    put("state",lock);
+                }
+            });
+            if (number > 0) {
+                return dbService.getReturn_status("10001");
+            } else {
+                return dbService.getReturn_status("20004");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    @Transactional
+    public Map addMenu(Map<String,Object> map){
+        try {
+            String type=map.get("type").toString();//获取是子菜单还是父菜单
+            String group="";
+            if (!"".equals(map.get("group")) && map.get("group")!=null){
+                group=map.get("group").toString();//获取选中用户组
+            }
+            String sotr;
+            map.remove("type");map.remove("group");//删除多余参数
+            if (type.equals("0")){//如果是父菜单添加上级id 0;
+                map.put("parent_id","0");
+                Map m=dbService.getMenuSort("0");//获取父级的排序
+                if (m.size()>0){
+                    map.putAll(m);//插入MAP
+                }
+            }else {
+                Map m=dbService.getMenuSort(map.get("parent_id").toString());//获取子级的排序
+                if (m!=null &&m.size()>0){
+                    map.putAll(m);//插入MAP
+                }else {
+                    map.put("sort",0);
+                }
+            }
+
+            int Number=dbService.addMenu(map);//获取插入数据并返回ID
+            BigInteger bi= (BigInteger) map.get("ID");//获取插入数据的ID
+            int ID=bi.intValue();
+            if (group.equals("")){
+                group = String.valueOf(ID);//如果是父菜单就只需要插入自己ID
+            }else {
+                group += ","+String.valueOf(ID);//如果是子菜单需要自己ID和父菜单ID
+            }
+            if (Number>0) {//如果插入菜单成功就继续操作
+                if (!group.equals("")){//判断是否勾选用户组
+                    String finalGroup = group;
+                    List<Map> list = dbService.getAuthority(new HashMap() {
+                        {
+                            put("group", finalGroup);
+                        }
+                    });//查询需要新增菜单的用户组的菜单权限信息
+                    for (Map m : list) {
+                        String menu_id = m.get("menu_id").toString();
+                        String[] menu = menu_id.split(",");
+                        String[] groups = group.split(",");
+                        String str = ArrayUtils.ArrayMergingtoString(menu, groups);//合并新增权限和已有权限
+                        Number=dbService.UpdateAuthority(new HashMap(){{put("ID",m.get("ID"));}},
+                                new HashMap(){{put("menu_id",str);}});//更新权限信息
+                        if (Number==0){
+                            return dbService.getReturn_status("20003");
+                        }
+                    }
+                }
+                return dbService.getReturn_status("10003");
+            }else {
+                return dbService.getReturn_status("20003");
+            }
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map getParentMenu(Map map){
+        try {
+            List list=dbService.getMenu(new HashMap(){{
+                put("parent_id","0");
+            }});
+            return dbService.getReturn_status("10000",list);
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map getUsergroupAll(Map map){
+        try {
+            List list=dbService.getGrouping(null);
+            return dbService.getReturn_status("10000",list);
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    public Map getMenuInfo(Map map){
+        try {
+            List list=dbService.getMenu(map);
+            return dbService.getReturn_status("10000",list);
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+    @Transactional
+    public Map updateMenu(Map<String,Object> map){
+        try {
+            String ID=map.get("ID").toString();
+            String group="";
+            if (!isnull(map.get("group"))){
+                group=map.get("group").toString();
+            }
+            String type=map.get("type").toString();
+            map.remove("ID"); map.remove("group");map.remove("type");
+            int number=dbService.updateMenu(new HashMap(){{put("ID",ID);}},map);
+            if (number>0 && !isnull(group)) {
+                //查询用户组是否有该菜单权限
+                    String finalGroup = group;
+                    List<Map<String,Object>> list = dbService.getMenubinding(new HashMap() {
+                        {
+                            put("grouping_id", finalGroup);
+                        }
+                    });
+                    String menus="";
+                    if ("1".equals(type)){//如果是子菜单需要加上父菜单ID
+                        menus= map.get("parent_id")+","+ID;
+                    }else {
+                        menus=ID;
+                    }
+                    for (Map m:list) {
+                        String menu_id = m.get("menu_id").toString();
+                        String[] menu = menu_id.split(",");
+                        String str="";
+                        if (!Arrays.asList(menu).contains(ID)) {
+                            String[] groups = menus.split(",");
+                            str= ArrayUtils.ArrayMergingtoString(menu, groups);//合并新增权限和已有权限
+                        }else {
+                            Object[] new_menu=ArrayUtils.Arrayremove(menu,ID);
+                            str=StringUtils.join(new_menu, ",");
+                        }
+                        String finalStr = str;
+                        number=dbService.UpdateAuthority(new HashMap(){{put("ID",m.get("ID"));}},
+                                new HashMap(){{put("menu_id", finalStr);}});//更新权限信息
+                        if (number==0){
+                            return dbService.getReturn_status("20003");
+                        }
+                    }
+
+            }
+                return dbService.getReturn_status("10003");
+        }catch (Exception e){
+            dbService.setLog(e,getuserinfoMap().get("username"),map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+
+}

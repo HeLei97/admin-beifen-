@@ -1,0 +1,25 @@
+package com.module.system.user.controller;
+
+import com.util.ControllerBase;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+
+@Controller
+public class UserWebController extends ControllerBase {
+    /**
+     * 请求用户管理页面
+	 * @param model
+     * @return
+     */
+	@RequestMapping(value = "/UserManagement")
+	public String UserManagement(Model model){
+		return "/sys/UserManagement";
+	}
+
+	@RequestMapping(value = "/UserUpdate")
+	public String UserUpdate(Model model){
+		return "/sys/UserUpdate";
+	}
+}

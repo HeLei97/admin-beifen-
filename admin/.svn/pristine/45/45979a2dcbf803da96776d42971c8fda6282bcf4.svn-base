@@ -1,0 +1,196 @@
+package com.module.system.authority.controller;
+
+
+import com.helei.api.util.ReqToMapUtil;
+import com.util.ControllerBase;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
+
+import java.awt.*;
+import java.util.List;
+import java.util.Map;
+
+
+@SuppressWarnings({"unchecked", "rawtypes", "serial"})
+@RequestMapping(value = "/authority")
+@RestController
+public class AuthorityRestController extends ControllerBase {
+
+	@Autowired
+	private com.module.system.authority.service.ApiService ApiService;
+
+	@RequestMapping(value = "/getUserGroup", method = RequestMethod.GET)
+	public Map getUserGroup(HttpServletRequest req, Model model){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.getUserGroup(map);
+	}
+
+	/**
+	 * 获取菜单树
+	 * @param req
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/getMenu", method = RequestMethod.POST)
+	public Map getMenu(HttpServletRequest req, Model model){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.getMenu(map);
+	}
+
+	/**
+	 * 更新菜单权限
+	 * @param req
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/UpdateAuthority",method = RequestMethod.POST)
+	public Map UpdateAuthority(HttpServletRequest req, Model model){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return   ApiService.UpdateAuthority(map);
+	}
+	/**
+	 * 更新菜单权限
+	 * @param req
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/getMenulist",method = RequestMethod.GET)
+	public List getMenulist(HttpServletRequest req, Model model){
+		return  ApiService.getMenulist();
+	}
+
+	/**
+	 * 锁定菜单
+	 * @param req
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/setMenuLock",method = RequestMethod.POST)
+	public Map setMenuLock(HttpServletRequest req, Model model){
+			Map map= ReqToMapUtil.getParameterMap(req);
+			return ApiService.setMenuLock(map);
+	};
+
+	/**
+	 * 删除菜单
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/delMenu",method = RequestMethod.POST)
+	public Map delMenu(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.delMenu(map);
+	}
+
+	/**
+	 * 删除用户组
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/DeleteGroup",method = RequestMethod.POST)
+	public Map DeleteAuthority(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.DeleteGroup(map);
+	}
+
+	/**
+	 * 添加用户组
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/addGroup",method = RequestMethod.POST)
+	public Map addGroup(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.addGroup(map);
+	}
+	/**
+	 * 获取用户组信息
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/getGroup",method = RequestMethod.POST)
+	public Map getGroup(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.getGroup(map);
+	}
+	/**
+	 * 修改用户组信息
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/updateGroup",method = RequestMethod.POST)
+	public Map updateGroup(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.updateGroup(map);
+	}
+	/**
+	 * 锁定用户组
+	 * @param req
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/setGroupLock",method = RequestMethod.POST)
+	public Map setGroupLock(HttpServletRequest req, Model model){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.setGroupLock(map);
+	};
+
+	/**
+	 * 添加菜单
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/addMenu",method = RequestMethod.POST)
+	public Map addMenu(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.addMenu(map);
+	}
+
+	/**
+	 * 修改菜单
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/updateMenu",method = RequestMethod.POST)
+	public Map updateMenu(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.updateMenu(map);
+	}
+	/**
+	 * 获取所有父级菜单
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/getParentMenu",method = RequestMethod.POST)
+	public Map getParentMenu(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.getParentMenu(map);
+	}
+
+	/**
+	 * 获取所有用户组
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/getUsergroupAll",method = RequestMethod.POST)
+	public Map getUsergroupAll(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.getUsergroupAll(map);
+	}
+
+	/**
+	 * 获取菜单信息
+	 * @param req
+	 * @return
+	 */
+	@RequestMapping(value = "/getMenuInfo",method = RequestMethod.POST)
+	public Map getMenuInfo(HttpServletRequest req){
+		Map map= ReqToMapUtil.getParameterMap(req);
+		return ApiService.getMenuInfo(map);
+	}
+}

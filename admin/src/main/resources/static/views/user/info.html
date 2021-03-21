@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>设置我的资料</title>
+    <meta content="webkit" name="renderer">
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0"
+          name="viewport">
+    <link href="../res/layui/layui/css/layui.css" media="all" rel="stylesheet">
+    <link href="../res/layui/css/admin.css" media="all" rel="stylesheet">
+    <script src="../../res/common.js"></script>
+</head>
+<body>
+
+<div class="layui-fluid">
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">设置我的资料</div>
+                <div class="layui-card-body" pad15>
+
+                    <div class="layui-form" lay-filter="">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">用户名</label>
+                            <div class="layui-input-inline">
+                                <input class="layui-input" name="username" readonly type="text" value="">
+                            </div>
+                            <div class="layui-form-mid layui-word-aux">无法修改</div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">昵称</label>
+                            <div class="layui-input-inline">
+                                <input autocomplete="off" class="layui-input" lay-verify="nickname" name="nickname" placeholder="请输入昵称"
+                                       type="text" value="">
+                            </div>
+                            <div class="layui-form-mid layui-word-aux">可以修改</div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">用户组</label>
+                            <div class="layui-input-inline">
+                                <input autocomplete="off" class="layui-input" lay-verify="nickname" name="grouping_name" placeholder="请输入昵称"
+                                       readonly type="text" value="">
+                            </div>
+                            <div class="layui-form-mid layui-word-aux">修改用户组请联系管理员</div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">头像</label>
+                            <div class="layui-input-inline">
+                                <img  id="img" height="100" width="100" src="/images/Default.jpg">
+                            </div>
+                            <div class="layui-input-inline layui-btn-container" style="width: auto;">
+                                <button type="button" class="layui-btn" id="img_but">
+                                    <i class="layui-icon">&#xe67c;</i>上传图片
+                                </button>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">邮箱</label>
+                            <div class="layui-input-inline">
+                                <input autocomplete="off" class="layui-input" id="email" lay-verify="email" readonly type="text"
+                                       value="">
+                            </div>
+                            <div class="layui-input-inline layui-btn-container" style="width: auto;">
+                                <button class="layui-btn layui-btn-primary"  id="update_email">修改</button>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">微信绑定</label>
+                            <div class="layui-input-inline">
+                                <input autocomplete="off" class="layui-input" id="wx" readonly type="text">
+                            </div>
+                            <div class="layui-input-inline layui-btn-container" style="width: auto;">
+                                <button class="layui-btn layui-btn-primary"  style="display: none;"  id="insert_wx">绑定微信</button>
+<!--                                <button class="layui-btn layui-btn-primary" id="update_wx">修改绑定</button>-->
+                                <button class="layui-btn layui-btn-primary"  style="display: none;"  id="delete_wx">解除绑定</button>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">口令</label>
+                            <div class="layui-input-inline">
+                                <input autocomplete="off" class="layui-input" id="password" readonly type="text">
+                            </div>
+                            <div class="layui-input-inline layui-btn-container" style="width: auto;">
+                                <button class="layui-btn layui-btn-primary" style="display: none;" id="insert_pwd">设置口令</button>
+                                <button class="layui-btn layui-btn-primary" style="display: none;" id="update_pwd">修改口令</button>
+                                <button class="layui-btn layui-btn-primary" style="display: none;" id="reset_pwd">重置口令</button>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <div class="layui-input-block">
+                                <button class="layui-btn" lay-filter="setmyinfo" lay-submit>确认修改</button>
+                                <button class="layui-btn layui-btn-primary" type="reset">重新填写</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../res/layui/layui/layui.js"></script>
+<script>
+    layui.config({
+        base: '../res/layui/' //静态资源所在路径
+    }).extend({
+        index: 'lib/index' //主入口模块
+    }).use(['index', 'set']);
+</script>
+<script>
+    layui.use(['jquery', "layer"], function (args) {
+        var $ = layui.$, index, layer = layui.layer;
+        $("#insert_wx").hide();
+        $("#update_wx").hide();
+        $("#delete_wx").hide();
+        $("#insert_pwd").hide();
+        $("#update_pwd").hide();
+        $("#reset_pwd").hide();
+        $.ajax({
+            url: "/user/getuserinfo",
+            type: "post",
+            dataType: "json",
+            beforeSend: function () {
+                index = layer.load(0, {shade: false});
+            }, complete: function () {
+                layer.close(index);
+            }, success: function (data) {
+                console.log(data);
+                if (data.code_type == 0) {
+                    $("input[name=username]").val(data.data.username);
+                    $("input[name=nickname]").val(data.data.MC);
+                    $("input[name=grouping_name]").val(data.data.grouping_name);
+                    $("#email").val(data.data.email);
+                    if (data.data.wx == undefined) {
+                        $("#wx").val("未设置");
+                        $("#insert_wx").show();
+                    } else {
+                        $("#wx").val(data.data.wx);
+                        $("#update_wx").show();
+                        $("#delete_wx").show();
+                    }
+                    if (data.data.img!=undefined){
+                        $("#img").attr("src",data.data.img);
+                    }
+                    if (data.data.oper_pwd == '未绑定') {
+                        $("#insert_pwd").show();
+                    } else {
+                        $("#update_pwd").show();
+                        $("#reset_pwd").show();
+                    }
+                    $("#password").val(data.data.oper_pwd);
+                } else {
+                    layer.msg('删除失败:' + data.data, {icon: 2});
+                }
+            },
+            error: function (data) {
+                top.layer.msg('网络请求失败，请重试！', {icon: 5});
+            }
+        });
+        $("#insert_wx").on("click", function () {
+            layer.open({
+                type: 2,
+                title: '微信扫码绑定',
+                closeBtn: 1,
+                content: ['/user/wxbinding', 'no'],//这里content是一个URL，如果你不想让iframe出现滚动条，你还可以content: ['http://sentsin.com', 'no']
+                area: ['300px', '300px']
+            });
+        });
+        $("#update_wx").on("click", function () {
+            console.log("修改微信");
+        });
+        $("#delete_wx").on("click", function () {
+            console.log("解除微信");
+            layer.confirm('真的解除微信绑定吗?', function (index) {
+                $.ajax({
+                    url: "/wx/delwxbinding",
+                    type: "post",
+                    dataType: "json",
+                    beforeSend: function () {
+                        index = layer.load(0, {shade: false});
+                    }, complete: function () {
+                        layer.close(index);
+                    }, success: function (data) {
+                        console.log(data);
+                        if (data.code_type == 0) {
+                            layer.msg("解除绑定成功");
+                            setTimeout(function () {
+                                location.reload();
+                            }, 3000);
+                        } else {
+                            layer.msg('删除失败:' + data.data, {icon: 2});
+                        }
+                    },
+                    error: function (data) {
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+            });
+        });
+        $("#update_pwd").on("click", function () {
+            layer.open({
+                type: 2,
+                title: '微信扫码绑定',
+                closeBtn: 1,
+                content: ['/user/operationPwd', 'no'],//这里content是一个URL，如果你不想让iframe出现滚动条，你还可以content: ['http://sentsin.com', 'no']
+                area: ['500px', '360px']
+            });
+        });
+    });
+</script>
+<script>
+    layui.use('upload', function(){
+        var upload = layui.upload;
+        //执行实例
+        var uploadInst = upload.render({
+            elem: '#img_but' //绑定元素
+            ,url: '/user/upload_img/' //上传接口
+            ,done: function(res){
+                //上传完毕回调
+                if (res.code==0){
+                    layer.msg("头像上传成功");
+                    setTimeout(function () {
+                        location.reload();
+                    }, 3000);
+                }else {
+                    top.layer.msg('上传失败:'+res.msg, {icon: 5});
+                }
+            }
+            ,error: function(){
+                //请求异常回调
+                top.layer.msg('网络请求失败，请重试！', {icon: 5});
+            }
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Layui</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../res/layui/layui/css/layui.css" media="all">
+
+    <!-- 注意：如果你直接复制所有代码到本地，上述css路径需要改成你本地的 -->
+    <style>
+        #card {
+            width: 70%;
+            padding: 20px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+<div id="card">
+    <form class="layui-form layui-form-pane" action="" lay-filter="form">
+        <div class="layui-form-item" pane="">
+            <label class="layui-form-label">菜单类性</label>
+            <div class="layui-input-block">
+                <input type="radio" name="type" value="" title="父菜单" checked="" lay-filter="Parent">
+                <input type="radio" name="type" value="" title="子菜单" lay-filter="Sub">
+                <input type="radio" name="type" value="" title="按钮" disabled="">
+            </div>
+        </div>
+        <div class="layui-form-item" id="Parent">
+            <label class="layui-form-label">上级菜单</label>
+            <div class="layui-input-block">
+                <select name="parent_id" lay-verify="parent_id" placeholder="请选择上级菜单">
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">菜单名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" autocomplete="off" placeholder="请输入菜单名称"
+                       class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" id="url">
+            <label class="layui-form-label">URL</label>
+            <div class="layui-input-block">
+                <input type="text" name="url" placeholder="请输入页面地址"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">图标</label>
+            <div class="layui-input-block">
+                <input type="text" name="icon" id="iconPicker" lay-filter="iconPicker"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" pane="">
+            <label class="layui-form-label">用户组</label>
+            <div class="layui-input-block" id="box">
+            </div>
+        </div>
+        <div class="layui-form-item" pane="">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-block">
+                <input type="radio" name="state" value="0" title="启用" checked="">
+                <input type="radio" name="state" value="1" title="停用">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button type="submit" class="layui-btn" lay-submit="" lay-filter="sub">立即提交</button>
+                <button type="button" class="layui-btn layui-btn-primary" id="exit">取消</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script src="../res/layui/layui/layui.js"></script>
+<!-- 注意：如果你直接复制所有代码到本地，上述js路径需要改成你本地的 -->
+
+<script type="text/javascript" th:inline="javascript">
+    layui.config({
+        base: 'res/iconPicker/module/'
+    }).extend({
+        iconPicker: 'iconPicker/iconPicker'
+    });
+    layui.use(['element', 'form', 'jquery', 'iconPicker'], function () {
+        var element = layui.element;
+        var form = layui.form;
+        var $ = layui.jquery;
+        var iconPicker = layui.iconPicker;
+        var type=0, Menurecord, boxstate = [],InitialValue;
+        var index;
+        var id, parent_id, UserGroupID;//修改菜单传参
+        iconPicker.render({
+            // 选择器，推荐使用input
+            elem: '#iconPicker',
+            // 数据类型：fontClass/unicode，推荐使用fontClass
+            type: 'fontClass',
+            // 是否开启搜索：true/false
+            search: true,
+            // 是否开启分页
+            page: true,
+            // 每页显示数量，默认12
+            limit: 12,
+            // 点击回调
+            click: function (data) {
+                //console.log(data);
+            }
+        });
+        iconPicker.checkIcon('iconPicker', "");//设置icon
+        $("#Parent").hide();
+        $("#url").hide();
+        //监听类型选择
+        form.on('radio(Parent)', function (data) {
+            $("#Parent").hide();
+            $("#url").hide();
+            type = 0;
+            form.render();
+        });
+        form.on('radio(Sub)', function (data) {
+            $("#Parent").show();
+            $("#url").show();
+            type = 1;
+            form.render();
+        });
+        form.verify({
+            parent_id: function (value, item) { //value：表单的值、item：表单的DOM对象
+                if (type == 1) {
+                    if (value == "") {
+                        return "上级菜单不能为空";
+                    }
+                }
+            }
+            , url: function (value, item) {
+                if (type == 1) {
+                    if (value == "") {
+                        return "URL不能为空";
+                    }
+                }
+            }
+        });
+        //取消关闭页面
+        $("#exit").on('click', function (data) {
+            var index = parent.layer.getFrameIndex(window.name);
+            parent.layer.close(index);//关闭当前页
+            //parent.layui.table.reload("User"); 父表格重载
+        });
+        //保存按钮修改记录 boxstate 长度为0 表示未修改
+        form.on('checkbox', function (data) {
+            if (boxstate.length == 0) {
+                boxstate.push(data.value);
+            } else {
+                for (var key in boxstate) {
+                    if (boxstate[key] == data.value) {
+                        boxstate.splice(key);
+                    } else {
+                        boxstate.push(data.value);
+                    }
+                }
+            }
+        });
+        //监听提交
+        form.on('submit(sub)', function (data) {
+            // 删除空值 避免空值提交
+            for (var key in data.field) {
+                if (data.field[key] == "") {
+                    delete data.field[key];
+                }
+            };
+            data.field.type = type;
+            var arr = new Array();
+            $("input:checkbox[type=checkbox]:checked").each(function (i) {
+                arr[i] = $(this).val();
+            });
+            //data.field.group = arr.join(",");//将数组合并成字符串
+            data.field.group=boxstate.join(",");
+            if (id == null) {
+                //添加菜单
+                $.ajax({
+                    url: "/authority/addMenu",
+                    type: "post",
+                    data: data.field,
+                    dataType: "json",
+                    beforeSend: function () {
+                        index = layer.load(0, {shade: false});
+                    }, complete: function () {
+                        layer.close(index);
+                    }, success: function (data) {
+                        if (data.code_type == 0) {
+                            layer.msg('添加菜单成功:', {icon: 1});
+                            var index = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index);//关闭当前页
+                            parent.Refresh(); //父表格重载
+                        } else {
+                            layer.msg('添加菜单失败:' + data.msg, {icon: 2});
+                        }
+                    },
+                    error: function (data) {
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+            } else {
+                InitialValue.type = data.field.type;
+                var flag=false;
+                for (var key in InitialValue){
+                    if (InitialValue[key]==data.field[key] ||(InitialValue[key]=="" && data.field[key]==undefined) ){
+                        //console.log("未修改")
+                    }else {
+                        //console.log("已修改")
+                        flag=true;
+                    }
+                }
+                if (boxstate.length>0){
+                    flag=true;
+                }else {
+                    delete data.field.group; //如果未修改不传此参数
+                }
+                if (flag){
+                    data.field.ID=id;
+                    $.ajax({
+                        url: "/authority/updateMenu",
+                        type: "post",
+                        data: data.field,
+                        dataType: "json",
+                        beforeSend: function () {
+                            index = layer.load(0, {shade: false});
+                        }, complete: function () {
+                            layer.close(index);
+                        }, success: function (data) {
+                            if (data.code_type == 0) {
+                                layer.msg('修改父菜单成功:' + data.msg, {icon: 1});
+                                var index = parent.layer.getFrameIndex(window.name);
+                                parent.layer.close(index);//关闭当前页
+                                parent.Refresh();//重载表格
+                            } else {
+                                layer.msg('修改父菜单失败:' + data.msg, {icon: 2});
+                            }
+                            form.render();
+                            InitialValue = form.val("form");//页面加载完成 保存表单值
+                        },
+                        error: function (data) {
+                            top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                        }
+                    });
+                }else {
+                    layer.msg("数据未修改", {icon: 5});
+                }
+            }
+            return false;
+        });
+        layer.ready(function () {
+            id = getQueryString("ID");//该参数为修改菜单时不为null
+            parent_id = getQueryString("parent_id");
+            UserGroupID = getQueryString("UserGroupID");
+            if (id != null) {
+                //获取菜单信息
+                $.ajax({
+                    url: "/authority/getMenuInfo",
+                    type: "post",
+                    data: {"ID": id},
+                    dataType: "json",
+                    beforeSend: function () {
+                        index = layer.load(0, {shade: false});
+                    }, complete: function () {
+                        layer.close(index);
+                    }, success: function (data) {
+                        if (data.code_type == 0) {
+                            var info = data.data[0];
+                            Menurecord = info;//保存未修改前的数据
+                            $("input[name=name]").val(info.name);
+                            if (parent_id != 0) {
+                                $("input[name=url]").val(info.url);
+                            }
+                            if (info.state == "0") {
+                                $("input[name=state][value=0]").attr("checked", "true");
+                                $("input[name=state][value=1]").removeAttr("checked");
+                            } else {
+                                $("input[name=state][value=0]").removeAttr("checked");
+                                $("input[name=state][value=1]").attr("checked", "true");
+                            }
+                            if (info.icon==undefined){
+                                info.icon="";
+                            }
+                            iconPicker.checkIcon('iconPicker', info.icon);//设置icon
+                        } else {
+                            layer.msg('获取菜单失败:' + data.msg, {icon: 2});
+                        }
+                        form.render();
+                        InitialValue = form.val("form");//页面加载完成 保存表单值
+                    },
+                    error: function (data) {
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+            }
+            if (parent_id != 0 && parent_id != null) {
+                var radio = document.getElementsByName("type");
+                /*用ByName是为了取到所有的radio*/
+                radio[0].disabled = true;//设置父菜单按钮禁用
+                radio[1].checked = true;//设置子菜单按钮选中
+                $("#Parent").show();
+                $("#url").show();
+                type = 1;
+                form.render();
+            } else if (parent_id == 0) {
+                type = 0;
+                var radio = document.getElementsByName("type");
+                radio[1].disabled = true;//设置子菜单按钮禁用
+                form.render();
+            }
+            //获取上级菜单
+            $.ajax({
+                url: "/authority/getParentMenu",
+                type: "post",
+                dataType: "json",
+                beforeSend: function () {
+                    index = layer.load(0, {shade: false});
+                }, complete: function () {
+                    layer.close(index);
+                }, success: function (data) {
+                    if (data.code_type == 0) {
+                        var html = "";
+                        if (parent_id != 0 && parent_id != null) {
+                            data.data.forEach(
+                                function (item) {
+                                    if (parent_id == item.ID) {
+                                        html = '<option value="' + item.ID + '">' + item.name + '</option>' + html;
+                                    } else {
+                                        html += '<option value="' + item.ID + '">' + item.name + '</option>';
+                                    }
+                                }
+                            )
+                        } else {
+                            html = "<option value=''>请选择上级菜单</option>";
+                            data.data.forEach(
+                                function (item) {
+                                    html += '<option value="' + item.ID + '">' + item.name + '</option>';
+                                }
+                            )
+                        }
+                        $("select[name=parent_id]").html(html);
+                        form.render();
+                        InitialValue = form.val("form");//页面加载完成 保存表单值
+                    } else {
+                        layer.msg('获取父菜单失败:' + data.msg, {icon: 2});
+                    }
+                },
+                error: function (data) {
+                    top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                }
+            });
+            //获取所有的用户组
+            $.ajax({
+                url: "/authority/getUsergroupAll",
+                type: "post",
+                dataType: "json",
+                beforeSend: function () {
+                    index = layer.load(0, {shade: false});
+                }, complete: function () {
+                    layer.close(index);
+                }, success: function (data) {
+                    if (data.code_type == 0) {
+                        var html = "";
+                        if (UserGroupID != null) {
+                            var arr = UserGroupID.split(',');
+                            data.data.forEach(
+                                function (item) {
+                                    if (arr.indexOf(String(item.ID)) != -1) {
+                                        html += '<input type="checkbox" title="' + item.grouping_name + '"  value="' + item.ID + '" checked>';
+                                    } else {
+                                        html += '<input type="checkbox" title="' + item.grouping_name + '"  value="' + item.ID + '">';
+                                    }
+                                }
+                            )
+                        } else {
+                            data.data.forEach(
+                                function (item) {
+                                    html += '<input type="checkbox" title="' + item.grouping_name + '"  value="' + item.ID + '">';
+                                }
+                            )
+                        }
+                        $("#box").html(html);
+                        form.render();
+                        InitialValue = form.val("form");//页面加载完成 保存表单值
+                    } else {
+                        layer.msg('获取父菜单失败:' + data.msg, {icon: 2});
+                    }
+                },
+                error: function (data) {
+                    top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                }
+            });
+        });
+    });
+
+    function getQueryString(name) {
+        var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i');
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) {
+            return unescape(r[2]);
+        }
+        return null;
+    }
+</script>
+
+</body>
+</html>

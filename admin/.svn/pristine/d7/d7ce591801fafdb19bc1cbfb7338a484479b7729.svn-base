@@ -1,0 +1,228 @@
+package com.module.system.user.service;
+
+import com.entity.User;
+import com.helei.api.common.ImplBase;
+import com.helei.api.util.ExceptionDetailUtil;
+import com.helei.api.util.PwdUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class ApiService extends ImplBase {
+    @Autowired
+    DbService dbService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    //private Map<String,Object> userinfo=(Map<String, Object>) request.getSession().getAttribute("user");
+    private Map<String, Object> userinfo = null;
+
+    public Map getuserinfoMap() {
+        if (userinfo == null) {
+            userinfo = (Map<String, Object>) request.getSession().getAttribute("user");
+        }
+        return userinfo;
+    }
+
+    /**
+     * 获取用户列表
+     *
+     * @param map 管理员登录信息
+     * @return
+     */
+    public Map getUserList(Map<String, Object> map) {
+        if (map != null) {
+            try {
+                if ("1".equals(map.get("grouping_id").toString())) {
+                    List userList = dbService.getUserList((Map<String, Object>) map.get("data"));
+                    return dbService.res_success(userList, userList.size());
+                } else if (map.get("grouping_id") == null) {
+                    throw new Exception("用户未登录");
+                } else {
+                    throw new Exception(map.get("username") + "用户无法访问指定数据");
+                }
+            } catch (Exception e) {
+                dbService.setLog(e, getuserinfoMap().get("username"), map);
+                return dbService.res_error(e.getMessage());
+            }
+        } else {
+            return dbService.res_error("未登录");
+        }
+    }
+
+    public Map SetUserLock(Map map) {
+        try {
+            String lock;
+            if ("true".equals(map.get("lock"))) {
+                lock = "1";
+            } else {
+                lock = "0";
+            }
+            ;
+            int number = dbService.UserLock(map.get("id").toString(), lock);
+            if (number > 0) {
+                return dbService.getReturn_status("10003");
+            } else {
+                return dbService.getReturn_status("20003");
+            }
+        } catch (Exception e) {
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+
+    public Map getReturn_status(String code) {
+        return dbService.getReturn_status(code);
+    }
+
+    /**
+     * 根据ID 获取用户信息
+     *
+     * @param map 管理员登录信息
+     * @return
+     */
+    public Map getUserByID(Map<String, Object> map) {
+        try {
+            if (map == null || "".equals(map.get("id"))) {
+                return dbService.getReturn_status("20005");
+            } else {
+                List<Map> userList = dbService.getUserList(map);
+                userList.get(0).put("Grouping", dbService.getGrouping());
+                if (userList.size() > 0) {
+                    Map res = dbService.getReturn_status("10000");
+                    res.put("data", userList);
+                    return res;
+                } else {
+                    return dbService.getReturn_status("20005");
+                }
+            }
+        } catch (Exception e) {
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+
+    public Map UpdateUserInfo(Map map) {
+        try {
+            String id = map.get("id").toString();
+            map.remove("id");
+            int number = dbService.UpdateUserInfo(id, map);
+            if (number > 0) {
+                return dbService.getReturn_status("10003");
+            } else {
+                return dbService.getReturn_status("20003");
+            }
+        } catch (Exception e) {
+            Map info = new HashMap();
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.res_error(e.getMessage());
+        }
+    }
+
+    @Transactional
+    public Map deleteUser(Map map) {
+        try {
+            List list = dbService.getUserDel(map);
+            if (list.size() == 0) {
+                dbService.SetUserDelInfo(map);
+            }
+            dbService.DeleteUser(map);
+            return dbService.getReturn_status("10004");
+        } catch (Exception e) {
+            dbService.setLog(e, getuserinfoMap().get("username"), map);
+            return dbService.getReturn_status("20000");
+        }
+    }
+
+    public Map getGrouping() {
+        List userList = dbService.getGrouping();
+        if (userList.size() > 0) {
+            Map res = dbService.getReturn_status("10000");
+            res.put("data", userList);
+            return res;
+        } else {
+            return dbService.getReturn_status("20005");
+        }
+    }
+
+    public Map ConfirmPassword(Map map) {
+        map.put("ID", getuserinfoMap().get("id"));
+        map.put("operation_pwd", PwdUtil.encodePwd(map.get("operation_pwd").toString()));
+        List list = dbService.getUserList(map);
+        if (list.size() > 0) {
+            return dbService.getReturn_status("10000");
+        } else {
+            return dbService.getReturn_status("20006");
+        }
+    }
+
+    public Map getmsgList(Map map) {
+        List newsList = dbService.getnewsList(map);
+        if (newsList.size() > 0) {
+            return dbService.res_success(newsList, newsList.size());
+        } else {
+            return dbService.res_error("消息为空");
+        }
+    }
+
+    public Map getNews(String id) {
+        Map user = getuserinfoMap();
+        List newsList = dbService.getnews(new HashMap() {{
+            put("ID", id);
+            put("receive_user_id", user.get("id"));
+        }});
+        Map news = (Map) newsList.get(0);
+        if (news.get("state").equals("0")) {
+            dbService.updateNews(new HashMap() {{
+                put("ID", news.get("ID"));
+            }}, new HashMap() {{
+                put("state", 1);
+            }});
+        }
+        if (newsList.size() > 0) {
+            return dbService.getReturn_status("10000", news);
+        } else {
+            return dbService.getReturn_status("20000", "消息获取失败");
+        }
+    }
+
+    /**
+     * 检查公告写入消息表
+     */
+    @Transactional
+    public void Receiving() {
+        Map user = getuserinfoMap();
+        List<Map> list = dbService.getNotice(user.get("id").toString());
+        if (list.size() > 0) {
+            //写入公告到个人表
+            for (Map m : list) {
+                dbService.addNews(new HashMap() {{
+                    put("title", m.get("title"));
+                    put("content", m.get("content"));
+                    put("receive_user_id", user.get("id"));
+                    put("sendout_user_id", m.get("publisher_id"));
+                    put("type", 0);
+                    put("state", 0);
+                    put("notice_id", m.get("ID"));
+                }});
+            }
+        }
+    }
+    public Map getNumber_of_unread_messages(){
+        Map user = getuserinfoMap();
+        List<Map> list=dbService.getNewsCount(user.get("id").toString());
+        if(list.size()>0){
+            return list.get(0);
+        }else {
+            return null;
+        }
+    }
+}

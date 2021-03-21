@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Layui</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../res/layui/layui/css/layui.css" media="all">
+    <!-- 注意：如果你直接复制所有代码到本地，上述css路径需要改成你本地的 -->
+    <style>
+        #card{
+            width: 60%;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-card" id="card">
+    <div class="layui-card-body">
+        <form class="layui-form layui-form-pane" action="">
+            <input name="id" class="layui-input" style="display: none;" type="text" autocomplete="off" value="000111">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">UserID</label>
+                    <div class="layui-input-inline">
+                        <input name="userid" class="layui-input" type="text" autocomplete="off" disabled="disabled">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">用户名</label>
+                    <div class="layui-input-inline">
+                        <input name="username" class="layui-input" type="text" autocomplete="off" disabled="disabled">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">昵称</label>
+                    <div class="layui-input-inline">
+                        <input name="name" class="layui-input" type="text" autocomplete="off">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">DH</label>
+                    <div class="layui-input-inline">
+                        <input name="DH" class="layui-input" type="text" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label">用户组</label>
+                    <div class="layui-input-inline">
+<!--                   <input name="grouping" class="layui-input" type="text" autocomplete="off">-->
+                        <select name="grouping" lay-verify="required">
+
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label">是否锁定</label>
+                    <div class="layui-input-block">
+                        <input type="radio" name="lock" value="0" title="否">
+                        <input type="radio" name="lock" value="1" title="是">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button class="layui-btn" lay-submit lay-filter="formDemo">立即提交</button>
+                    <button type="button" class="layui-btn layui-btn-primary" id="exit">取消</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="../res/layui/layui/layui.js"></script>
+<!-- 注意：如果你直接复制所有代码到本地，上述js路径需要改成你本地的 -->
+
+<script type="text/javascript" th:inline="javascript">
+    var userinfo;
+    layui.use(['form'], function () {
+        var form = layui.form
+            , layer = layui.layer;
+        var $=layui.$;
+        //监听提交
+        form.on('submit(formDemo)', function (data) {
+            console.log(data.field);
+            var json= {};
+            if (data.field.name!=userinfo.MC){
+                json["MC"]=data.field.name;
+            }
+            if (data.field.DH!=userinfo.DH){
+                json["DH"]=data.field.DH;
+            }
+            if (data.field.grouping!=userinfo.grouping_id){
+                json["grouping_id"]=data.field.grouping;
+                json["grouping_name"]=$("select option:checked").text();
+            }
+
+            if (data.field.lock!=userinfo.loginlock){
+                json["loginlock"]=data.field.lock;
+            }
+            if(!$.isEmptyObject(json)){
+                json["id"]=data.field.id;
+                $.ajax({
+                    url: "/user/UserinfoUpdate",
+                    type: "post",
+                    data :json,
+                    dataType: "json",
+                    beforeSend: function () {
+                        var index = layer.load(0, {shade: false});
+                    },complete:function(){
+                        layer.closeAll();
+                    },success: function (data) {
+                        if (data.code_type == 0) {
+                            var index = parent.layer.getFrameIndex(window.name);
+                            parent.layer.close(index);//关闭当前页
+                            parent.layui.table.reload("User"); //父表格重载
+                        }else {
+                            top.layer.msg('请求失败:'+data.msg, {icon: 5});
+                        }
+                    },
+                    error: function (data) {
+                        top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                    }
+                });
+            }else {
+                top.layer.msg('未修改数据!', {icon: 5});
+            }
+            return false;
+        });
+        $("#exit").on('click',function (data) {
+            var index = parent.layer.getFrameIndex(window.name);
+            parent.layer.close(index);//关闭当前页
+            //parent.layui.table.reload("User"); 父表格重载
+        });
+        layer.ready(function () {
+            var id=getQueryString("id");
+            var groupingid=getQueryString("groupingid");
+            $.ajax({
+                url: "/user/getUserInfoByID",
+                type: "post",
+                data :{"id":id},
+                dataType: "json",
+                beforeSend: function () {
+                    var index = layer.load(0, {shade: false});
+                },complete:function(){
+                    layer.closeAll();
+                },success: function (data) {
+                    if (data.code_type == 0) {
+                        userinfo=data.data[0];
+                        $("input[name=id]").val(data.data[0].id);
+                        $("input[name=userid]").val(data.data[0].BM);
+                        $("input[name=username]").val(data.data[0].username);
+                        $("input[name=name]").val(data.data[0].MC);
+                        $("input[name=DH]").val(data.data[0].DH);
+                        var html="";
+
+                        for(var i of data.data[0].Grouping) {
+                            console.log(groupingid==i.ID);
+                            if (groupingid==i.ID)
+                                html=' <option value="'+i.ID+'">'+i.grouping_name+'</option>'+html;
+                            else
+                            html+=' <option value="'+i.ID+'">'+i.grouping_name+'</option>';
+                        };
+                        $("select[name=grouping]").html(html);
+                        if (data.data[0].loginlock=="0"){
+                            $("input[name=lock][value=0]").attr("checked","true");
+                            $("input[name=lock][value=1]").removeAttr("checked");
+                        }else {
+                         $("input[name=lock][value=0]").removeAttr("checked");
+                         $("input[name=lock][value=1]").attr("checked","true");
+                        }
+                        form.render();
+                    }else {
+                        top.layer.msg('请求失败:'+data.msg, {icon: 5});
+                    }
+                },
+                error: function (data) {
+                    top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                }
+            });
+        });
+    });
+    function getQueryString(name) {
+        var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i');
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) {
+            return unescape(r[2]);
+        }
+        return null;
+    }
+</script>
+
+</body>
+</html>

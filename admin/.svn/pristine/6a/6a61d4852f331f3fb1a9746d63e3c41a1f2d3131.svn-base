@@ -1,0 +1,19 @@
+package com.module.weixin.controller;
+
+import com.util.ControllerBase;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+
+@Controller
+public class WXWebController extends ControllerBase {
+    /*
+     * 请求登录页面
+     */
+    @RequestMapping(value = { "/wxtest" }, method = RequestMethod.GET)
+    public String wxtest(Model model) {
+        return "/weixin/test";
+    }
+}

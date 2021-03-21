@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>邮件模板管理</title>
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta content="webkit" name="renderer">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
+    <link href="../res/layui/layui/css/layui.css" media="all" rel="stylesheet">
+    <style>
+        .layui-fluid {
+            padding: 15px;
+        }
+    </style>
+    <script src="../../res/common.js"></script>
+</head>
+<body>
+<div class="layui-fluid">
+    <div class="layui-card" id="card">
+        <div class="layui-card-body" id="cardBoby">
+            <form action="" class="layui-form">
+                <div class="layui-form-item">
+                    <div class="layui-inline">
+                        <label class="layui-form-label">类型</label>
+                        <div class="layui-input-inline">
+                            <input autocomplete="off" class="layui-input" name="type" type="text">
+                        </div>
+                    </div>
+                    <div class="layui-inline">
+                        <div class="layui-input-inline">
+                            <button class="layui-btn layuiadmin-btn-order" lay-filter="submint" lay-submit>
+                                <i class="layui-icon layui-icon-search layuiadmin-button-btn"></i>
+                            </button>
+                            <button class="layui-btn layuiadmin-btn-order" lay-submit type="reset">
+                                重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <div>
+                <div class="layui-row">
+                    <div class="layui-col-xs6">
+                        <script id="toolbar" type="text/html">
+                            <div class="layui-btn-container">
+                                <button class="layui-btn layui-btn-sm" lay-event="add" th:if="${add!=null}"><i
+                                        th:class="'layui-icon '+${add?.icon}"></i>[[${add?.name}]]
+                                </button>
+                            </div>
+                        </script>
+                        <table class="layui-hide" id="EmailTemplate" lay-filter="EmailTemplate"></table>
+                        <script id="checkboxTpl" type="text/html">
+                            <!-- 这里的 checked 的状态只是演示 -->
+                            <input type="checkbox" name="lock" value="{{d.ID}}" title="锁定" lay-filter="lock" {{
+                                   d.state== 0
+                                   ? '' : 'checked' }}>
+                        </script>
+
+                        <script id="operation" type="text/html">
+                            {{# if(d.state == 1){ }}
+                            <a class="layui-btn layui-btn-xs" lay-event="edit" th:if="${edit!=null}"><i
+                                    th:class="'layui-icon '+${edit?.icon}"></i>[[${edit.name}]]</a>
+                            <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del" th:if="${del!=null}"><i
+                                    th:class="'layui-icon '+${del?.icon}"></i>[[${del.name}]]</a>
+                            <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="opt" th:if="${opt!=null}"><i
+                                    th:class="'layui-icon '+${opt?.icon}"></i>[[${opt.name}]]</a>
+                            {{# } }}
+                        </script>
+                    </div>
+                    <div class="layui-col-xs6">
+                        <div class="grid-demo" style="padding: 10px">
+                            <div class="layui-btn-container">
+                            </div>
+                            <div class="demo-tree-more" id="Preview" lay-filter="Preview">
+                                双击表格预览该模板
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script src="../res/layui/layui/layui.js"></script>
+<script>
+    layui.config({
+        base: './res/layui/' //静态资源所在路径
+    }).extend({
+        index: 'lib/index' //主入口模块
+    }).use('index');
+
+</script>
+<script th:inline="none" type="text/javascript">
+    layui.use(['util', 'table'], function () {
+        var table = layui.table
+            , form = layui.form;
+        var $ = layui.$, index;
+        var json;
+        var layer = layui.layer
+            , util = layui.util
+        table.render({
+            elem: '#EmailTemplate'
+            , url: '/authority/getEmailTemplate'
+            , toolbar: '#toolbar'
+            , cols: [[
+                {type: 'numbers'}
+                , {field: 'type', title: '类型', sort: true, unresize: true}
+                , {field: 'title', title: '邮件标题', sort: true, unresize: true}
+                , {
+                    field: 'state', title: '状态', sort: true, unresize: true, templet: function (row) {
+                        switch (row.state) {
+                            case 0:
+                                return "正在使用";
+                            default:
+                                return "未使用";
+                        }
+                    }
+                }
+                , {field: 'remarks', title: '备注', sort: true, unresize: true}
+                , {fixed: 'right', title: '操作', toolbar: '#operation', width: 200, unresize: true}
+            ]]
+            , page: true
+        });
+        //监听行单击事件（双击事件为：rowDouble）
+        table.on('rowDouble(EmailTemplate)', function (obj) {
+            var data = obj.data;
+            var index;
+            //标注选中样式
+            obj.tr.addClass('layui-table-click').siblings().removeClass('layui-table-click');
+            $.ajax({
+                url: "/authority/getTemplatecontent",
+                type: "post",
+                data: {"ID": data.ID},
+                dataType: "json",
+                beforeSend: function () {
+                    index = layer.load(0, {shade: false});
+                }, complete: function () {
+                    layer.close(index);
+                }, success: function (data) {
+                    if (data.code_type == 0) {
+                        $("#Preview").html(data.data.content);
+                    } else {
+                        layer.msg('获取菜单失败:' + data.msg, {icon: 2});
+                        layer.closeAll();
+                        //可以重载所有基础参数
+                        tree.reload('menu1', {
+                            data: {}
+                        });
+                    }
+                },
+                error: function (data) {
+                    top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                }
+            });
+        });
+        //监听提交
+        form.on('submit(submint)', function (data) {
+            table.reload('EmailTemplate', {
+                where: data.field //设定异步数据接口的额外参数
+                //,height: 300
+            });
+            return false;
+        });
+        //工具栏事件
+        table.on('toolbar(EmailTemplate)', function (obj) {
+            switch (obj.event) {
+                case 'add':
+                    window.location.href = "/EditTemplate?type=add";
+                    break;
+            }
+            ;
+        });
+        //监听行工具事件
+        table.on('tool(EmailTemplate)', function (obj) {
+            var data = obj.data;
+            Passwordverification(function () {
+                if (obj.event === 'del') {
+                    if (data.is_default == 1) {
+                        layer.msg('删除失败:默认模板禁止删除', {icon: 2});
+                        return false;
+                    }
+                    layer.confirm('真的删除行么', function (index2) {
+                        $.ajax({
+                            url: "/authority/delete_Templatecontent",
+                            type: "post",
+                            data: {ID: data.ID},
+                            dataType: "json",
+                            beforeSend: function () {
+                                index = layer.load(0, {shade: false});
+                            }, complete: function () {
+                                layer.close(index);
+                            }, success: function (data) {
+                                if (data.code_type == 0) {
+                                    obj.del();
+                                } else {
+                                    layer.msg('删除失败:' + data.data, {icon: 2});
+                                }
+                            },
+                            error: function (data) {
+                                top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                            }
+                        });
+                        layer.close(index);
+                    });
+                } else if (obj.event === 'edit') {
+                    if (data.is_default == 1) {
+                        layer.msg('修改失败:默认模板禁止修改', {icon: 2});
+                        return false;
+                    }
+                    window.location.href = "/EditTemplate?type=update&ID=" + data.ID;
+                } else if (obj.event === 'opt') {
+                    $.ajax({
+                        url: "/authority/opt_Templatecontent",
+                        type: "post",
+                        data: {ID: data.ID,type:data.type},
+                        dataType: "json",
+                        beforeSend: function () {
+                            index = layer.load(0, {shade: false});
+                        }, complete: function () {
+                            layer.close(index);
+                        }, success: function (data) {
+                            if (data.code_type == 0) {
+                                table.reload("EmailTemplate");
+                            } else {
+                                layer.msg('删除失败:' + data.data, {icon: 2});
+                            }
+                        },
+                        error: function (data) {
+                            top.layer.msg('网络请求失败，请重试！', {icon: 5});
+                        }
+                    });
+                    layer.close(index);
+                }
+            });
+        });
+    });
+</script>
+</html>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>测试页面</title>
+</head>
+<body>
+<p>测试测试</p>
+<h5>test</h5>
+</body>
+<script>
+    var url = window.location.href;
+    var jsh1TagName = document.getElementsByTagName('h5');
+    jsh1TagName[0].innerHTML=url;
+</script>
+</html>

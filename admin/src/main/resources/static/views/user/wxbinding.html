@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>设置我的资料</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" href="../res/layui/layui/css/layui.css" media="all">
+    <link rel="stylesheet" href="../res/layui/css/admin.css" media="all">
+    <script src="../../res/common.js"></script>
+</head>
+<body>
+
+<div class="layui-fluid">
+    <div class="layui-row layui-col-space15">
+        <div class="layui-row layui-col-space15" id="QRcodelogin"  style="text-align: center">
+            <div class="layui-col-sm12 layui-col-md12" id="qr">
+                <div class="layui-form-item">
+                    <img id="qrCode" width="200" height="200"/>
+                    <p><a onclick="showQRcode()">刷新二维码</a></p>
+                </div>
+            </div>
+            <div class="layui-col-sm12 layui-col-md12" id="success" style="display: none;">
+                <div class="layui-form-item">
+                    <img src="../images/icon_success.png" width="100" height="100"/>
+                    <h1>扫描成功</h1>
+                    <p>请在手机上［绑定］</p>
+                    <div style="height: 40px"></div>
+                    <p><a onclick="showQRcode()">返回二维码</a></p>
+                </div>
+
+            </div>
+            <div class="layui-col-sm12 layui-col-md12" id="error" style="display: none;">
+                <div class="layui-form-item">
+                    <img src="../images/icon_error.png" width="100" height="100"/>
+                    <h1>您已取消登录</h1>
+                    <div style="height: 50px"></div>
+                    <p><a onclick="showQRcode()">返回二维码</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<script src="../res/layui/layui/layui.js"></script>
+<script>
+    var $;
+    layui.use(['jquery',"layer"], function (args) {
+        $ = layui.$,layer = layui.layer;
+        showQRcode();
+    });
+        var key;
+        function  getQRcode() {
+            var img = "";
+            $.ajax({
+                url: "/wx/getQrcode",
+                type: "POST",
+                data:{"t":1},
+                success: function (data) {
+                    $("#qrCode").attr("src", data.qrCode);
+                    var uuid = data.uuid;
+                    key = data.key;
+                    callbackScan(uuid)
+                }
+            });
+        }
+        var tID;
+        //使用setTimeOut来循环请求判断是否被扫描，被扫描以后调用下面一个函数循环判断是否被确认
+        function callbackScan(uuid) {
+            tID = setTimeout(function () {
+                $.ajax({
+                    url: '/wx/query',
+                    dataType: "json",
+                    type: 'POST',
+                    data: {"uuid": uuid},
+                    success: function (res) {
+                        //process data here
+                        if (res.QrCodeStatus == "SCANNED") {
+                            clearTimeout(tID);
+                            //console.log("请求确认")
+                            $("#qr").hide();
+                            $("#success").show();
+                            callbackVerify(uuid)
+                        }else if(res.QrCodeStatus == "Expired"){
+                            clearTimeout(tID);
+                            $("#qr").hide();
+                            $("#success").hide();
+                            $("#error h1").html("二维码已过期");
+                            $("#error").show();
+                        }else if (res.error!=undefined){
+                            clearTimeout(tID);
+                            $("#qr").hide();
+                            $("#success").hide();
+                            $("#error h1").html(res.error);
+                            $("#error").show();
+                        }else {
+                            callbackScan(uuid)
+                        }
+                    },
+                    error:function(res){
+                        clearTimeout(tID);
+                        $("#qr").hide();
+                        $("#success").hide();
+                        $("#error h1").html("请求错误");
+                        $("#error").show();
+                    }
+                })
+            }, 1500);
+        }
+        //循环判断是否被确认
+
+        function callbackVerify(uuid) {
+            tID = setTimeout(function () {
+                $.ajax({
+                    url: '/wx/query',
+                    dataType: "json",
+                    type: 'POST',
+                    data: {"uuid": uuid},
+                    success: function (res) {
+                        //process data here
+                        console.log(res);
+                        if (res.QrCodeStatus == "VERIFIED") {
+                            clearTimeout(tID);
+                            $("h5").text("确认成功");
+                            parent.location.reload();
+                        } else if(res.QrCodeStatus == "EXIT"){
+                            clearTimeout(tID);
+                            $("#qr").hide();
+                            $("#success").hide();
+                            $("#error h1").html("登录已取消");
+                            $("#error").show();
+                        }else if(res.QrCodeStatus == "Expired"){
+                            clearTimeout(tID);
+                            $("#qr").hide();
+                            $("#success").hide();
+                            $("#error h1").html("二维码已过期");
+                            $("#error").show();
+                        } else {
+                            callbackVerify(uuid)
+                        }
+                    },
+                    error:function(res){
+                        clearTimeout(tID);
+                        $("#qr").hide();
+                        $("#success").hide();
+                        $("#error h1").html("请求错误");
+                        $("#error").show();
+                    }
+                })
+            }, 1500);
+        }
+
+
+    function showQRcode() {
+        $("#accountlogin").hide();
+        $("#QRcodelogin").show();
+        $("#qr").show();
+        $("#success").hide();
+        $("#error").hide();
+        getQRcode();
+    }
+</script>
+
+</body>
+</html>

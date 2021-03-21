@@ -1,0 +1,61 @@
+package com.module.system.authority.controller;
+
+import com.util.ControllerBase;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+
+@Controller
+public class AuthorityWebController extends ControllerBase {
+	/**
+	 * 用户组管理
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = { "/AuthorityManagement" }, method = RequestMethod.GET)
+	public String AuthorityManagement(Model model){
+		return "/sys/AuthorityManagement";
+	}
+
+	/**
+	 * 菜单管理
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = { "/MenuManagement" }, method = RequestMethod.GET)
+	public String MenuManagement(Model model){
+		return "/sys/MenuManagement";
+	}
+
+	/**
+	 * 新增菜单
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/AddMenu",method = RequestMethod.GET)
+	public String AddMenu(Model model){
+		return "/sys/AddMenu";
+	}
+
+	/**
+	 * 新增用户组
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/AddAuthority",method = RequestMethod.GET)
+	public String AddAuthority(Model model){
+		return "/sys/AddAuthority";
+	}
+
+	/**
+	 * 系统配置管理
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/ConfigManagement",method = RequestMethod.GET)
+	public String ConfigManagement(Model model){
+		return "/sys/ConfigManagement";
+	}
+}

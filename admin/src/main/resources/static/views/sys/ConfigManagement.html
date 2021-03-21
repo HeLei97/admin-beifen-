@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>权限分配</title>
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta content="webkit" name="renderer">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1" name="viewport">
+    <link href="../res/layui/layui/css/layui.css" media="all" rel="stylesheet">
+    <style>
+        .layui-fluid {
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-fluid">
+    <div class="layui-card" id="card">
+        <div class="layui-card-body" id="cardBoby">
+        <form action="" class="layui-form layui-form-pane">
+
+        </form>
+    </div>
+    </div>
+</div>
+</body>
+<script src="../res/layui/layui/layui.js"></script>
+<script>
+    layui.config({
+        base: './res/layui/' //静态资源所在路径
+    }).extend({
+        index: 'lib/index' //主入口模块
+    }).use('index');
+
+</script>
+<script th:inline="none" type="text/javascript">
+    layui.use(['tree', "form"], function () {
+        var table = layui.table, form = layui.form;
+        var $ = layui.$;
+        $.ajax({
+            url: "/authority/getConfig",
+            type: "post",
+            dataType: "json",
+            beforeSend: function () {
+                var index = layer.load(0, {shade: false});
+            }, complete: function () {
+                layer.closeAll();
+            }, success: function (data) {
+                var list = data.data;
+                if (data.code_type == 0) {
+                    var html = '';
+                    for (var i in list) {
+                        var v=list[i].value==null?"":list[i].value;
+                        if (i%2==0){
+                            html+="<div class=\"layui-form-item\">\n" +
+                                "                <div style=\"width: 50%;float: left\">\n" +
+                                "                    <label class=\"layui-form-label\">"+list[i].keyname+"</label>\n" +
+                                "                    <div class=\"layui-input-block\">\n" +setinput(list[i])+
+                                "                    </div>\n" +
+                                "                    <div class=\"layui-form-mid layui-word-aux\">"+ list[i].remarks +"</div>\n" +
+                                "                </div>\n";
+                        }
+                        if (i%2==1){
+                            html+="<div style=\"width: 50%;float: left\">\n" +
+                            "                    <label class=\"layui-form-label\">"+list[i].keyname+"</label>\n" +
+                            "                    <div class=\"layui-input-block\" >\n"  +setinput(list[i])+
+                            "                    </div>\n" +
+                            "                    <div class=\"layui-form-mid layui-word-aux\">"+ list[i].remarks +"</div>\n" +
+                            "                </div>\n" +
+                            "            </div>";
+                        }
+                    }
+                    if (list.length%2==0){
+                        html+="</div>";
+                    }
+                    $("form").html(html);
+                    form.render();
+                } else {
+                    layer.closeAll();
+                    //可以重载所有基础参数
+                    tree.reload('menu1', {
+                        data: {}
+                    });
+                }
+            },
+            error: function (data) {
+                top.layer.msg('网络请求失败，请重试！', {icon: 5});
+            }
+        });
+        function setinput(list) {
+            var html="";
+            var v=list.value==null?"":list.value;
+            switch (list.type) {
+                case "text":
+                    html+="<input autocomplete=\"off\" class=\"layui-input\" name=\""+list.keyname+"\" placeholder=\"请输入标题\" type=\"text\" value=\"" + v + "\">";
+                    break;
+                case "":
+
+                    break;
+                case "checkbox":
+                    html+="<input type=\"checkbox\" name=\"close\" lay-skin=\"switch\" lay-text=\"ON|OFF\">";
+                    break;
+                default:
+                    html+="<input autocomplete=\"off\" class=\"layui-input\" name=\""+list.keyname+"\" placeholder=\"请输入标题\" type=\"text\" value=\"" + v + "\">";
+                    break;
+
+            }
+           return html;
+        }
+    });
+</script>
+</html>
